@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Aljabar Interaktif / Interactive Algebra Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF and html2canvas for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .option-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .option-btn.selected {
+            background-color: #3b82f6; /* bg-blue-500 */
+            color: white;
+            border-color: #2563eb; /* border-blue-600 */
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Start Page -->
+    <div id="start-container" class="w-full max-w-lg bg-white p-8 rounded-2xl shadow-lg">
+        <h1 id="start-title" class="text-3xl font-bold text-center mb-6">Selamat Datang di Kuis Aljabar</h1>
+        <form id="user-info-form" class="space-y-4">
+            <div>
+                <label for="student-name" id="label-name" class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+                <input type="text" id="student-name" name="student-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+            </div>
+            <div>
+                <label for="student-class" id="label-class" class="block text-sm font-medium text-gray-700">Kelas</label>
+                <input type="text" id="student-class" name="student-class" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+            </div>
+            <div>
+                <label for="student-email" id="label-email" class="block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" id="student-email" name="student-email" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+            </div>
+            <button type="submit" id="start-quiz-button" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mt-4">Mulai Kuis</button>
+        </form>
+    </div>
+
+
+    <div id="quiz-container" class="w-full max-w-3xl bg-white p-6 sm:p-8 rounded-2xl shadow-lg hidden">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 id="quiz-title" class="text-2xl font-bold text-gray-900">Kuis Aljabar Interaktif</h1>
+                <p id="progress-text" class="text-sm text-gray-500">Soal 1 dari 22</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span id="lang-id-label" class="text-sm font-medium">ID</span>
+                <button id="language-toggle" class="relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 bg-blue-600" role="switch" aria-checked="false">
+                    <span class="sr-only">Use setting</span>
+                    <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 translate-x-5"></span>
+                </button>
+                 <span id="lang-en-label" class="text-sm font-medium text-gray-400">EN</span>
+            </div>
+        </div>
+
+        <!-- Question Area -->
+        <div id="question-area" class="mb-6">
+            <p id="question-text" class="text-lg mb-4"></p>
+            <div id="answer-options" class="space-y-3"></div>
+        </div>
+        
+        <!-- Hint and Navigation -->
+        <div class="flex flex-col sm:flex-row justify-between items-center pt-4 border-t">
+            <button id="hint-button" class="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold py-2 px-4 rounded-lg mb-3 sm:mb-0 w-full sm:w-auto">
+                💡 <span id="hint-button-text">Petunjuk</span>
+            </button>
+            <div class="flex space-x-3 w-full sm:w-auto">
+                <button id="prev-button" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg transition-opacity" disabled>
+                    <span id="prev-button-text">Sebelumnya</span>
+                </button>
+                <button id="next-button" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg">
+                    <span id="next-button-text">Selanjutnya</span>
+                </button>
+                 <button id="submit-button" class="hidden flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg">
+                    <span id="submit-button-text">Kirim</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results Area -->
+    <div id="results-container" class="w-full max-w-3xl bg-white p-8 rounded-2xl shadow-lg hidden">
+        <div id="pdf-content">
+            <h2 id="result-title" class="text-3xl font-bold text-center mb-2">Hasil Kuis</h2>
+            <div id="student-info-summary" class="text-center text-gray-600 mb-4"></div>
+            <p id="result-score" class="text-2xl text-center text-gray-700 mb-6">Skor Anda: 0 / 22</p>
+            <div id="detailed-results" class="space-y-4 max-h-[50vh] overflow-y-auto pr-2"></div>
+        </div>
+        <div class="flex justify-center mt-6 space-x-4">
+            <button id="restart-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg">
+                <span id="restart-button-text">Ulangi Kuis</span>
+            </button>
+            <button id="download-pdf-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg">
+                <span id="download-pdf-button-text">Unduh PDF</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Hint Modal -->
+    <div id="hint-modal" class="modal items-center justify-center">
+        <div class="modal-content bg-white w-11/12 max-w-md p-6 rounded-2xl shadow-lg text-center">
+            <h3 id="hint-modal-title" class="text-xl font-bold mb-4">💡 Petunjuk</h3>
+            <p id="hint-modal-text" class="text-gray-700 mb-6"></p>
+            <button id="close-modal-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg">
+                <span id="close-modal-button-text">Mengerti</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const quizDataID = {
+            "title": "Kuis Aljabar Interaktif",
+            "questions": [
+                { "questionNumber": 1, "question": "Manakah di antara pilihan berikut yang merupakan sebuah persamaan?", "answerOptions": [ { "text": "5x - 10", "isCorrect": false }, { "text": "7y + 2 = 16", "isCorrect": true }, { "text": "9(a+b)", "isCorrect": false }, { "text": "x/4", "isCorrect": false } ], "hint": "Carilah pernyataan matematika yang memiliki tanda 'sama dengan' (=).", "rationale": "Sebuah persamaan menggunakan tanda sama dengan (=) untuk menyatakan bahwa dua ekspresi memiliki nilai yang sama." },
+                { "questionNumber": 2, "question": "Seseorang memikirkan sebuah bilangan, n. Ia mengalikan bilangan tersebut dengan 5, kemudian mengurangi hasilnya dengan 8. Manakah ekspresi yang tepat untuk menggambarkan situasi ini?", "answerOptions": [ { "text": "8 - 5n", "isCorrect": false }, { "text": "5(n-8)", "isCorrect": false }, { "text": "5n - 8", "isCorrect": true }, { "text": "n/5 - 8", "isCorrect": false } ], "hint": "Perhatikan urutan operasi: perkalian dilakukan sebelum pengurangan.", "rationale": "Ekspresi yang benar adalah 5n - 8, yang berarti n dikalikan 5 terlebih dahulu, lalu dikurangi 8." },
+                { "questionNumber": 3, "question": "Untuk pertidaksamaan n > 7.4, berapakah bilangan bulat terkecil yang mungkin untuk nilai n?", "answerOptions": [ { "text": "6", "isCorrect": false }, { "text": "7", "isCorrect": false }, { "text": "8", "isCorrect": true }, { "text": "9", "isCorrect": false } ], "hint": "Carilah bilangan bulat utuh pertama yang nilainya lebih besar dari 7.4.", "rationale": "Bilangan bulat terkecil yang lebih besar dari 7.4 adalah 8." },
+                { "questionNumber": 4, "question": "Berapakah nilai dari ekspresi 3p + 2q jika p=4 dan q=5?", "answerOptions": [ { "text": "17", "isCorrect": false }, { "text": "22", "isCorrect": true }, { "text": "26", "isCorrect": false }, { "text": "30", "isCorrect": false } ], "hint": "Gantikan setiap variabel dengan nilai angkanya, lalu hitung hasilnya.", "rationale": "Perhitungan yang benar adalah 3(4) + 2(5) = 12 + 10 = 22." },
+                { "questionNumber": 5, "question": "Sederhanakan ekspresi berikut: 8x + 3y - 2x + 5y.", "answerOptions": [ { "text": "10x + 8y", "isCorrect": false }, { "text": "6x + 8y", "isCorrect": true }, { "text": "14xy", "isCorrect": false }, { "text": "6x - 2y", "isCorrect": false } ], "hint": "Kelompokkan dan operasikan suku-suku yang memiliki variabel yang sama.", "rationale": "Suku x disederhanakan menjadi 8x - 2x = 6x, dan suku y menjadi 3y + 5y = 8y. Hasilnya adalah 6x + 8y." },
+                { "questionNumber": 6, "question": "Kembangkan kurung pada ekspresi berikut: 4(2a - 3).", "answerOptions": [ { "text": "8a - 3", "isCorrect": false }, { "text": "8a - 12", "isCorrect": true }, { "text": "6a - 7", "isCorrect": false }, { "text": "2a - 12", "isCorrect": false } ], "hint": "Kalikan angka di luar kurung dengan setiap suku yang ada di dalam kurung.", "rationale": "Dengan menggunakan sifat distributif, 4 * 2a = 8a dan 4 * (-3) = -12. Hasilnya adalah 8a - 12." },
+                { "questionNumber": 7, "question": "Selesaikan persamaan berikut untuk menemukan nilai x: x + 11 = 25.", "answerOptions": [ { "text": "x = 36", "isCorrect": false }, { "text": "x = 15", "isCorrect": false }, { "text": "x = 14", "isCorrect": true }, { "text": "x = 2.27", "isCorrect": false } ], "hint": "Untuk mendapatkan nilai x, kurangkan kedua sisi persamaan dengan 11.", "rationale": "Untuk mencari x, kurangkan 11 dari kedua sisi: x = 25 - 11 = 14." },
+                { "questionNumber": 8, "question": "Selesaikan persamaan berikut untuk menemukan nilai y: 6y = 54.", "answerOptions": [ { "text": "y = 48", "isCorrect": false }, { "text": "y = 60", "isCorrect": false }, { "text": "y = 9", "isCorrect": true }, { "text": "y = 324", "isCorrect": false } ], "hint": "Persamaan 6y berarti 6 dikalikan y. Gunakan operasi kebalikannya untuk menemukan nilai y.", "rationale": "Untuk mencari y, bagi kedua sisi dengan 6: y = 54 / 6 = 9." },
+                { "questionNumber": 9, "question": "Sederhanakan ekspresi pecahan aljabar berikut: 2x/5 + x/10.", "answerOptions": [ { "text": "3x/15", "isCorrect": false }, { "text": "5x/10", "isCorrect": true }, { "text": "4x/10", "isCorrect": false }, { "text": "3x/10", "isCorrect": false } ], "hint": "Samakan penyebut kedua pecahan dengan mencari Kelipatan Persekutuan Terkecil (KPK) dari 5 dan 10.", "rationale": "Samakan penyebutnya menjadi 10: 4x/10 + x/10 = 5x/10. Ini bisa disederhanakan menjadi x/2." },
+                { "questionNumber": 10, "question": "Sebuah segitiga sama kaki memiliki dua sisi yang sama panjang, yaitu (3x - 2) cm. Sisi ketiganya memiliki panjang 10 cm. Jika keliling segitiga adalah 34 cm, manakah persamaan yang benar untuk mencari nilai x?", "answerOptions": [ { "text": "3x - 2 = 34", "isCorrect": false }, { "text": "2(3x - 2) + 10 = 34", "isCorrect": true }, { "text": "(3x - 2) + 10 = 34", "isCorrect": false }, { "text": "3x + 8 = 34", "isCorrect": false } ], "hint": "Keliling segitiga didapat dengan menjumlahkan panjang ketiga sisinya.", "rationale": "Keliling adalah jumlah semua sisi: (3x-2) + (3x-2) + 10 = 34, yang disederhanakan menjadi 2(3x-2) + 10 = 34." },
+                { "questionNumber": 11, "questionType": "FREE_RESPONSE", "question": "Jika 5x - 7 = 28, berapakah nilai dari x?", "answers": [ { "text": "7" } ], "hint": "Lakukan operasi kebalikan untuk mengisolasi variabel x. Mulailah dengan menambahkan 7 ke kedua sisi.", "rationale": "Tambahkan 7 ke kedua sisi: 5x = 35. Bagi dengan 5: x = 7." },
+                { "questionNumber": 12, "questionType": "MULTIPLE_ANSWERS", "question": "Manakah dari ekspresi berikut yang ekuivalen dengan 2(x + 3)? Pilih semua jawaban yang benar.", "answerOptions": [ { "text": "2x + 6", "isCorrect": true }, { "text": "2x + 3", "isCorrect": false }, { "text": "(x+3) + (x+3)", "isCorrect": true }, { "text": "x + 6", "isCorrect": false } ], "hint": "Ingatlah sifat distributif perkalian dan apa arti dari mengalikan sesuatu dengan 2.", "rationale": "Menggunakan sifat distributif, 2(x+3) menjadi 2x + 6. Ini juga sama dengan menjumlahkan (x+3) dua kali." },
+                { "questionNumber": 13, "question": "Selesaikan persamaan berikut: 5x - 3 = 2x + 9.", "answerOptions": [ { "text": "x = 2", "isCorrect": false }, { "text": "x = 4", "isCorrect": true }, { "text": "x = 6/7", "isCorrect": false }, { "text": "x = -4", "isCorrect": false } ], "hint": "Kumpulkan semua suku yang mengandung variabel x di satu sisi persamaan dan konstanta di sisi lainnya.", "rationale": "Kurangi 2x dari kedua sisi: 3x - 3 = 9. Tambahkan 3 ke kedua sisi: 3x = 12. Bagi dengan 3: x = 4." },
+                { "questionNumber": 14, "question": "Faktorkan ekspresi berikut: 6a + 18.", "answerOptions": [ { "text": "3(2a + 6)", "isCorrect": false }, { "text": "2(3a + 9)", "isCorrect": false }, { "text": "6(a + 3)", "isCorrect": true }, { "text": "6(a + 18)", "isCorrect": false } ], "hint": "Cari faktor persekutuan terbesar (FPB) dari kedua suku.", "rationale": "Faktor persekutuan terbesar dari 6a dan 18 adalah 6. Jadi, 6a + 18 = 6(a+3)." },
+                { "questionNumber": 15, "question": "Selesaikan pertidaksamaan berikut: 2y + 5 > 15.", "answerOptions": [ { "text": "y > 5", "isCorrect": true }, { "text": "y > 10", "isCorrect": false }, { "text": "y < 5", "isCorrect": false }, { "text": "y = 5", "isCorrect": false } ], "hint": "Selesaikan seperti persamaan linear biasa, tetapi pertahankan tanda pertidaksamaannya.", "rationale": "Kurangi 5 dari kedua sisi: 2y > 10. Bagi dengan 2: y > 5." },
+                { "questionNumber": 16, "question": "Berapakah nilai dari ekspresi a^2 - 3b jika a=4 dan b=-2?", "answerOptions": [ { "text": "10", "isCorrect": false }, { "text": "14", "isCorrect": false }, { "text": "22", "isCorrect": true }, { "text": "-22", "isCorrect": false } ], "hint": "Hati-hati saat mengalikan dan mengurangi bilangan negatif.", "rationale": "Substitusi nilai: (4)^2 - 3(-2) = 16 - (-6) = 16 + 6 = 22." },
+                { "questionNumber": 17, "questionType": "FREE_RESPONSE", "question": "Sebuah taksi online mengenakan biaya dasar Rp 10.000 ditambah Rp 4.000 per kilometer. Jika total biaya perjalanan adalah Rp 50.000, berapa kilometer jarak perjalanan tersebut?", "answers": [ { "text": "10" } ], "hint": "Buatlah persamaan di mana k adalah jarak dalam kilometer, lalu selesaikan untuk k.", "rationale": "Persamaan: 10000 + 4000k = 50000. Kurangi 10000: 4000k = 40000. Bagi dengan 4000: k = 10 kilometer." },
+                { "questionNumber": 18, "question": "Sederhanakan ekspresi berikut: 7p^2 - 4q + 2p^2 + 6q.", "answerOptions": [ { "text": "9p^2 + 2q", "isCorrect": true }, { "text": "11p^2q^2", "isCorrect": false }, { "text": "9p^4 + 2q^2", "isCorrect": false }, { "text": "5p^2 + 10q", "isCorrect": false } ], "hint": "Hanya jumlahkan atau kurangkan suku-suku yang memiliki variabel dan pangkat yang sama persis.", "rationale": "Kelompokkan suku sejenis: (7p^2 + 2p^2) + (-4q + 6q) = 9p^2 + 2q." },
+                { "questionNumber": 19, "question": "Selesaikan persamaan berikut untuk x: x/4 - 3 = 2.", "answerOptions": [ { "text": "x = 5", "isCorrect": false }, { "text": "x = 20", "isCorrect": true }, { "text": "x = -4", "isCorrect": false }, { "text": "x = 4", "isCorrect": false } ], "hint": "Lakukan operasi kebalikan untuk menyelesaikan x. Mulai dengan memindahkan konstanta.", "rationale": "Tambahkan 3 ke kedua sisi: x/4 = 5. Kalikan dengan 4: x = 20." },
+                { "questionNumber": 20, "questionType": "MULTIPLE_ANSWERS", "question": "Manakah dari pilihan berikut yang merupakan **ekspresi** (bukan persamaan atau pertidaksamaan)? Pilih semua jawaban yang benar.", "answerOptions": [ { "text": "4x - 11", "isCorrect": true }, { "text": "ab(c-d)", "isCorrect": true }, { "text": "4x = 12", "isCorrect": false }, { "text": "y - 2 > 5", "isCorrect": false } ], "hint": "Ekspresi tidak mengandung tanda seperti =, <, atau >.", "rationale": "Ekspresi adalah kombinasi angka, variabel, dan operasi tanpa tanda kesetaraan atau perbandingan. 4x=12 adalah persamaan dan y-2>5 adalah pertidaksamaan." },
+                { "questionNumber": 21, "questionType": "FREE_RESPONSE", "question": "Apakah hasil dari penjabaran (ekspansi) dari (x+3)(x+4)?", "answers": [ { "text": "x^2 + 7x + 12" } ], "hint": "Kalikan setiap suku di kurung pertama dengan setiap suku di kurung kedua.", "rationale": "Gunakan metode FOIL: (x * x) + (x * 4) + (3 * x) + (3 * 4) = x^2 + 4x + 3x + 12 = x^2 + 7x + 12." },
+                { "questionNumber": 22, "question": "Jumlah tiga bilangan ganjil berurutan adalah 57. Jika bilangan terkecil adalah n, berapakah nilai n?", "answerOptions": [ { "text": "19", "isCorrect": false }, { "text": "21", "isCorrect": false }, { "text": "18", "isCorrect": false }, { "text": "17", "isCorrect": true } ], "hint": "Bilangan ganjil berurutan berbeda 2 angka (misalnya n, n+2, n+4). Buatlah persamaan dari jumlah ketiganya.", "rationale": "Persamaan: n + (n+2) + (n+4) = 57. Sederhanakan: 3n + 6 = 57. Kurangi 6: 3n = 51. Bagi dengan 3: n = 17." }
+            ]
+        };
+
+        const quizDataEN = {
+            "title": "Interactive Algebra Quiz",
+            "questions": [
+                { "questionNumber": 1, "question": "Which of the following is an equation?", "answerOptions": [ { "text": "5x - 10", "isCorrect": false }, { "text": "7y + 2 = 16", "isCorrect": true }, { "text": "9(a+b)", "isCorrect": false }, { "text": "x/4", "isCorrect": false } ], "hint": "Look for a mathematical statement that has an 'equals' sign (=).", "rationale": "An equation uses an equals sign (=) to state that two expressions are equal." },
+                { "questionNumber": 2, "question": "A person thinks of a number, n. They multiply the number by 5, then subtract 8 from the result. Which expression correctly represents this situation?", "answerOptions": [ { "text": "8 - 5n", "isCorrect": false }, { "text": "5(n-8)", "isCorrect": false }, { "text": "5n - 8", "isCorrect": true }, { "text": "n/5 - 8", "isCorrect": false } ], "hint": "Pay attention to the order of operations: multiplication comes before subtraction.", "rationale": "The correct expression is 5n - 8, which means n is first multiplied by 5, and then 8 is subtracted." },
+                { "questionNumber": 3, "question": "For the inequality n > 7.4, what is the smallest possible integer value for n?", "answerOptions": [ { "text": "6", "isCorrect": false }, { "text": "7", "isCorrect": false }, { "text": "8", "isCorrect": true }, { "text": "9", "isCorrect": false } ], "hint": "Find the first whole number that is greater than 7.4.", "rationale": "The smallest integer greater than 7.4 is 8." },
+                { "questionNumber": 4, "question": "What is the value of the expression 3p + 2q if p=4 and q=5?", "answerOptions": [ { "text": "17", "isCorrect": false }, { "text": "22", "isCorrect": true }, { "text": "26", "isCorrect": false }, { "text": "30", "isCorrect": false } ], "hint": "Substitute the numerical value for each variable, then calculate the result.", "rationale": "The correct calculation is 3(4) + 2(5) = 12 + 10 = 22." },
+                { "questionNumber": 5, "question": "Simplify the following expression: 8x + 3y - 2x + 5y.", "answerOptions": [ { "text": "10x + 8y", "isCorrect": false }, { "text": "6x + 8y", "isCorrect": true }, { "text": "14xy", "isCorrect": false }, { "text": "6x - 2y", "isCorrect": false } ], "hint": "Group and operate on like terms (terms with the same variable).", "rationale": "The x terms simplify to 8x - 2x = 6x, and the y terms become 3y + 5y = 8y. The result is 6x + 8y." },
+                { "questionNumber": 6, "question": "Expand the brackets in the following expression: 4(2a - 3).", "answerOptions": [ { "text": "8a - 3", "isCorrect": false }, { "text": "8a - 12", "isCorrect": true }, { "text": "6a - 7", "isCorrect": false }, { "text": "2a - 12", "isCorrect": false } ], "hint": "Multiply the number outside the bracket by each term inside the bracket.", "rationale": "Using the distributive property, 4 * 2a = 8a and 4 * (-3) = -12. The result is 8a - 12." },
+                { "questionNumber": 7, "question": "Solve the following equation to find the value of x: x + 11 = 25.", "answerOptions": [ { "text": "x = 36", "isCorrect": false }, { "text": "x = 15", "isCorrect": false }, { "text": "x = 14", "isCorrect": true }, { "text": "x = 2.27", "isCorrect": false } ], "hint": "To find the value of x, subtract 11 from both sides of the equation.", "rationale": "To find x, subtract 11 from both sides: x = 25 - 11 = 14." },
+                { "questionNumber": 8, "question": "Solve the following equation to find the value of y: 6y = 54.", "answerOptions": [ { "text": "y = 48", "isCorrect": false }, { "text": "y = 60", "isCorrect": false }, { "text": "y = 9", "isCorrect": true }, { "text": "y = 324", "isCorrect": false } ], "hint": "The equation 6y means 6 multiplied by y. Use the inverse operation to find the value of y.", "rationale": "To find y, divide both sides by 6: y = 54 / 6 = 9." },
+                { "questionNumber": 9, "question": "Simplify the following algebraic fraction expression: 2x/5 + x/10.", "answerOptions": [ { "text": "3x/15", "isCorrect": false }, { "text": "5x/10", "isCorrect": true }, { "text": "4x/10", "isCorrect": false }, { "text": "3x/10", "isCorrect": false } ], "hint": "Make the denominators of both fractions the same by finding the Lowest Common Multiple (LCM) of 5 and 10.", "rationale": "Make the denominators 10: 4x/10 + x/10 = 5x/10. This can be further simplified to x/2." },
+                { "questionNumber": 10, "question": "An isosceles triangle has two equal sides of length (3x - 2) cm. The third side has a length of 10 cm. If the perimeter of the triangle is 34 cm, which is the correct equation to find the value of x?", "answerOptions": [ { "text": "3x - 2 = 34", "isCorrect": false }, { "text": "2(3x - 2) + 10 = 34", "isCorrect": true }, { "text": "(3x - 2) + 10 = 34", "isCorrect": false }, { "text": "3x + 8 = 34", "isCorrect": false } ], "hint": "The perimeter of a triangle is found by adding the lengths of all three sides.", "rationale": "The perimeter is the sum of all sides: (3x-2) + (3x-2) + 10 = 34, which simplifies to 2(3x-2) + 10 = 34." },
+                { "questionNumber": 11, "questionType": "FREE_RESPONSE", "question": "If 5x - 7 = 28, what is the value of x?", "answers": [ { "text": "7" } ], "hint": "Use inverse operations to isolate the variable x. Start by adding 7 to both sides.", "rationale": "Add 7 to both sides: 5x = 35. Divide by 5: x = 7." },
+                { "questionNumber": 12, "questionType": "MULTIPLE_ANSWERS", "question": "Which of the following expressions are equivalent to 2(x + 3)? Select all that apply.", "answerOptions": [ { "text": "2x + 6", "isCorrect": true }, { "text": "2x + 3", "isCorrect": false }, { "text": "(x+3) + (x+3)", "isCorrect": true }, { "text": "x + 6", "isCorrect": false } ], "hint": "Remember the distributive property of multiplication and what it means to multiply something by 2.", "rationale": "Using the distributive property, 2(x+3) becomes 2x + 6. This is also the same as adding (x+3) twice." },
+                { "questionNumber": 13, "question": "Solve the following equation: 5x - 3 = 2x + 9.", "answerOptions": [ { "text": "x = 2", "isCorrect": false }, { "text": "x = 4", "isCorrect": true }, { "text": "x = 6/7", "isCorrect": false }, { "text": "x = -4", "isCorrect": false } ], "hint": "Gather all terms containing the variable x on one side of the equation and the constants on the other.", "rationale": "Subtract 2x from both sides: 3x - 3 = 9. Add 3 to both sides: 3x = 12. Divide by 3: x = 4." },
+                { "questionNumber": 14, "question": "Factorise the following expression: 6a + 18.", "answerOptions": [ { "text": "3(2a + 6)", "isCorrect": false }, { "text": "2(3a + 9)", "isCorrect": false }, { "text": "6(a + 3)", "isCorrect": true }, { "text": "6(a + 18)", "isCorrect": false } ], "hint": "Find the greatest common factor (GCF) of both terms.", "rationale": "The greatest common factor of 6a and 18 is 6. So, 6a + 18 = 6(a+3)." },
+                { "questionNumber": 15, "question": "Solve the following inequality: 2y + 5 > 15.", "answerOptions": [ { "text": "y > 5", "isCorrect": true }, { "text": "y > 10", "isCorrect": false }, { "text": "y < 5", "isCorrect": false }, { "text": "y = 5", "isCorrect": false } ], "hint": "Solve it like a regular linear equation, but keep the inequality sign.", "rationale": "Subtract 5 from both sides: 2y > 10. Divide by 2: y > 5." },
+                { "questionNumber": 16, "question": "What is the value of the expression a^2 - 3b if a=4 and b=-2?", "answerOptions": [ { "text": "10", "isCorrect": false }, { "text": "14", "isCorrect": false }, { "text": "22", "isCorrect": true }, { "text": "-22", "isCorrect": false } ], "hint": "Be careful when multiplying and subtracting negative numbers.", "rationale": "Substitute the values: (4)^2 - 3(-2) = 16 - (-6) = 16 + 6 = 22." },
+                { "questionNumber": 17, "questionType": "FREE_RESPONSE", "question": "An online taxi charges a base fare of Rp 10,000 plus Rp 4,000 per kilometer. If the total cost of a trip is Rp 50,000, how many kilometers was the trip?", "answers": [ { "text": "10" } ], "hint": "Create an equation where k is the distance in kilometers, then solve for k.", "rationale": "Equation: 10000 + 4000k = 50000. Subtract 10000: 4000k = 40000. Divide by 4000: k = 10 kilometers." },
+                { "questionNumber": 18, "question": "Simplify the following expression: 7p^2 - 4q + 2p^2 + 6q.", "answerOptions": [ { "text": "9p^2 + 2q", "isCorrect": true }, { "text": "11p^2q^2", "isCorrect": false }, { "text": "9p^4 + 2q^2", "isCorrect": false }, { "text": "5p^2 + 10q", "isCorrect": false } ], "hint": "Only add or subtract terms that have the exact same variable and exponent.", "rationale": "Group like terms: (7p^2 + 2p^2) + (-4q + 6q) = 9p^2 + 2q." },
+                { "questionNumber": 19, "question": "Solve the following equation for x: x/4 - 3 = 2.", "answerOptions": [ { "text": "x = 5", "isCorrect": false }, { "text": "x = 20", "isCorrect": true }, { "text": "x = -4", "isCorrect": false }, { "text": "x = 4", "isCorrect": false } ], "hint": "Use inverse operations to solve for x. Start by moving the constant term.", "rationale": "Add 3 to both sides: x/4 = 5. Multiply by 4: x = 20." },
+                { "questionNumber": 20, "questionType": "MULTIPLE_ANSWERS", "question": "Which of the following options are **expressions** (not equations or inequalities)? Select all that apply.", "answerOptions": [ { "text": "4x - 11", "isCorrect": true }, { "text": "ab(c-d)", "isCorrect": true }, { "text": "4x = 12", "isCorrect": false }, { "text": "y - 2 > 5", "isCorrect": false } ], "hint": "An expression does not contain signs like =, <, or >.", "rationale": "An expression is a combination of numbers, variables, and operations without an equality or comparison sign. 4x=12 is an equation and y-2>5 is an inequality." },
+                { "questionNumber": 21, "questionType": "FREE_RESPONSE", "question": "What is the result of expanding (x+3)(x+4)?", "answers": [ { "text": "x^2 + 7x + 12" } ], "hint": "Multiply each term in the first bracket by each term in the second bracket.", "rationale": "Use the FOIL method: (x * x) + (x * 4) + (3 * x) + (3 * 4) = x^2 + 4x + 3x + 12 = x^2 + 7x + 12." },
+                { "questionNumber": 22, "question": "The sum of three consecutive odd numbers is 57. If the smallest number is n, what is the value of n?", "answerOptions": [ { "text": "19", "isCorrect": false }, { "text": "21", "isCorrect": false }, { "text": "18", "isCorrect": false }, { "text": "17", "isCorrect": true } ], "hint": "Consecutive odd numbers are 2 apart (e.g., n, n+2, n+4). Create an equation from their sum.", "rationale": "Equation: n + (n+2) + (n+4) = 57. Simplify: 3n + 6 = 57. Subtract 6: 3n = 51. Divide by 3: n = 17." }
+            ]
+        };
+
+        let currentLanguage = 'id';
+        let currentQuestionIndex = 0;
+        let userAnswers = new Array(quizDataID.questions.length).fill(null);
+        let studentInfo = {};
+
+        const getElement = (id) => document.getElementById(id);
+        const startContainer = getElement('start-container');
+        const quizContainer = getElement('quiz-container');
+        const resultsContainer = getElement('results-container');
+        const userInfoForm = getElement('user-info-form');
+        
+        const quizTitleEl = getElement('quiz-title');
+        const progressTextEl = getElement('progress-text');
+        const questionTextEl = getElement('question-text');
+        const answerOptionsEl = getElement('answer-options');
+        const prevButton = getElement('prev-button');
+        const nextButton = getElement('next-button');
+        const submitButton = getElement('submit-button');
+        const hintButton = getElement('hint-button');
+        const languageToggle = getElement('language-toggle');
+        const hintModal = getElement('hint-modal');
+        
+        const langMap = {
+            id: {
+                progress: (current, total) => `Soal ${current} dari ${total}`,
+                hintButton: 'Petunjuk',
+                prevButton: 'Sebelumnya',
+                nextButton: 'Selanjutnya',
+                submitButton: 'Kirim',
+                hintModalTitle: '💡 Petunjuk',
+                closeModalButton: 'Mengerti',
+                resultTitle: 'Hasil Kuis',
+                resultScore: (score, total) => `Skor Anda: ${score} / ${total}`,
+                restartButton: 'Ulangi Kuis',
+                downloadButton: 'Unduh PDF',
+                yourAnswer: 'Jawaban Anda:',
+                correctAnswer: 'Jawaban Benar:',
+                question: 'Pertanyaan',
+                studentName: 'Nama Siswa',
+                studentClass: 'Kelas',
+                startTitle: 'Selamat Datang di Kuis Aljabar',
+                labelName: 'Nama Lengkap',
+                labelClass: 'Kelas',
+                labelEmail: 'Email',
+                startButton: 'Mulai Kuis'
+            },
+            en: {
+                progress: (current, total) => `Question ${current} of ${total}`,
+                hintButton: 'Hint',
+                prevButton: 'Previous',
+                nextButton: 'Next',
+                submitButton: 'Submit',
+                hintModalTitle: '💡 Hint',
+                closeModalButton: 'Got it',
+                resultTitle: 'Quiz Results',
+                resultScore: (score, total) => `Your Score: ${score} / ${total}`,
+                restartButton: 'Restart Quiz',
+                downloadButton: 'Download PDF',
+                yourAnswer: 'Your Answer:',
+                correctAnswer: 'Correct Answer:',
+                question: 'Question',
+                studentName: 'Student Name',
+                studentClass: 'Class',
+                startTitle: 'Welcome to the Algebra Quiz',
+                labelName: 'Full Name',
+                labelClass: 'Class',
+                labelEmail: 'Email',
+                startButton: 'Start Quiz'
+            }
+        };
+
+        function renderQuestion() {
+            const data = currentLanguage === 'id' ? quizDataID : quizDataEN;
+            const lang = langMap[currentLanguage];
+            const question = data.questions[currentQuestionIndex];
+
+            // Update texts
+            quizTitleEl.textContent = data.title;
+            progressTextEl.textContent = lang.progress(currentQuestionIndex + 1, data.questions.length);
+            getElement('hint-button-text').textContent = lang.hintButton;
+            getElement('prev-button-text').textContent = lang.prevButton;
+            getElement('next-button-text').textContent = lang.nextButton;
+            getElement('submit-button-text').textContent = lang.submitButton;
+            
+            questionTextEl.innerHTML = `${question.questionNumber}. ${question.question}`;
+            answerOptionsEl.innerHTML = '';
+
+            const questionType = question.questionType || 'MULTIPLE_CHOICE';
+
+            if (questionType === 'FREE_RESPONSE') {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'mt-2 block w-full px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md focus:border-blue-500 focus:outline-none focus:ring';
+                input.placeholder = currentLanguage === 'id' ? 'Ketik jawaban Anda di sini...' : 'Type your answer here...';
+                if (userAnswers[currentQuestionIndex]) {
+                    input.value = userAnswers[currentQuestionIndex];
+                }
+                input.addEventListener('input', (e) => {
+                    userAnswers[currentQuestionIndex] = e.target.value.trim();
+                });
+                answerOptionsEl.appendChild(input);
+            } else {
+                question.answerOptions.forEach((option, index) => {
+                    const optionType = questionType === 'MULTIPLE_ANSWERS' ? 'checkbox' : 'radio';
+                    const wrapper = document.createElement('div');
+                    const input = document.createElement('input');
+                    input.type = optionType;
+                    input.id = `option${index}`;
+                    input.name = 'answer';
+                    input.className = 'hidden';
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `option${index}`;
+                    label.className = 'option-btn block w-full text-left p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400';
+                    label.innerHTML = option.text;
+
+                    wrapper.appendChild(input);
+                    wrapper.appendChild(label);
+                    answerOptionsEl.appendChild(wrapper);
+
+                    const currentAnswer = userAnswers[currentQuestionIndex];
+                    if (optionType === 'radio' && currentAnswer === option.text) {
+                        label.classList.add('selected');
+                    } else if (optionType === 'checkbox' && currentAnswer && currentAnswer.includes(option.text)) {
+                        label.classList.add('selected');
+                    }
+                    
+                    label.addEventListener('click', () => {
+                        if (optionType === 'radio') {
+                            document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected'));
+                            label.classList.add('selected');
+                            userAnswers[currentQuestionIndex] = option.text;
+                        } else {
+                            label.classList.toggle('selected');
+                            let selectedAnswers = userAnswers[currentQuestionIndex] || [];
+                            if (label.classList.contains('selected')) {
+                                selectedAnswers.push(option.text);
+                            } else {
+                                selectedAnswers = selectedAnswers.filter(ans => ans !== option.text);
+                            }
+                            userAnswers[currentQuestionIndex] = selectedAnswers;
+                        }
+                    });
+                });
+            }
+
+            updateNavButtons();
+        }
+        
+        function updateNavButtons() {
+            prevButton.disabled = currentQuestionIndex === 0;
+            prevButton.classList.toggle('opacity-50', prevButton.disabled);
+
+            if (currentQuestionIndex === quizDataID.questions.length - 1) {
+                nextButton.classList.add('hidden');
+                submitButton.classList.remove('hidden');
+            } else {
+                nextButton.classList.remove('hidden');
+                submitButton.classList.add('hidden');
+            }
+        }
+
+        function showResults() {
+            quizContainer.classList.add('hidden');
+            resultsContainer.classList.remove('hidden');
+
+            const data = currentLanguage === 'id' ? quizDataID : quizDataEN;
+            const lang = langMap[currentLanguage];
+            let score = 0;
+            const detailedResultsEl = getElement('detailed-results');
+            detailedResultsEl.innerHTML = '';
+
+            getElement('student-info-summary').innerHTML = `
+                <p><strong>${lang.studentName}:</strong> ${studentInfo.name}</p>
+                <p><strong>${lang.studentClass}:</strong> ${studentInfo.class}</p>
+            `;
+
+            data.questions.forEach((q, index) => {
+                const userAnswer = userAnswers[index];
+                let isCorrect = false;
+                const questionType = q.questionType || 'MULTIPLE_CHOICE';
+                let correctAnswers = [];
+                
+                if (questionType === 'FREE_RESPONSE') {
+                    correctAnswers = q.answers.map(a => a.text.toLowerCase());
+                    isCorrect = userAnswer && correctAnswers.includes(userAnswer.toLowerCase());
+                } else if (questionType === 'MULTIPLE_ANSWERS') {
+                    correctAnswers = q.answerOptions.filter(opt => opt.isCorrect).map(opt => opt.text);
+                    const sortedUserAnswers = userAnswer ? [...userAnswer].sort() : [];
+                    const sortedCorrectAnswers = [...correctAnswers].sort();
+                    isCorrect = JSON.stringify(sortedUserAnswers) === JSON.stringify(sortedCorrectAnswers);
+                } else { // MULTIPLE_CHOICE
+                    correctAnswers = [q.answerOptions.find(opt => opt.isCorrect).text];
+                    isCorrect = userAnswer === correctAnswers[0];
+                }
+
+                if (isCorrect) score++;
+
+                const resultCard = document.createElement('div');
+                resultCard.className = `p-4 rounded-lg border-l-4 ${isCorrect ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500'}`;
+                
+                let userAnswerText = Array.isArray(userAnswer) ? userAnswer.join(', ') : userAnswer;
+                if (!userAnswerText || userAnswerText.length === 0) {
+                    userAnswerText = currentLanguage === 'id' ? 'Tidak dijawab' : 'Not answered';
+                }
+
+                resultCard.innerHTML = `
+                    <p class="font-semibold text-gray-800">${q.questionNumber}. ${q.question}</p>
+                    <p class="mt-2 text-sm text-gray-600"><strong>${lang.yourAnswer}</strong> <span class="${isCorrect ? 'text-green-700' : 'text-red-700'}">${userAnswerText}</span></p>
+                    ${!isCorrect ? `<p class="mt-1 text-sm text-gray-600"><strong>${lang.correctAnswer}</strong> <span class="text-green-700">${correctAnswers.join(', ')}</span></p>` : ''}
+                    <p class="mt-2 text-xs text-gray-500 italic">${q.rationale}</p>
+                `;
+                detailedResultsEl.appendChild(resultCard);
+            });
+            
+            // Update result texts
+            getElement('result-title').textContent = lang.resultTitle;
+            getElement('result-score').textContent = lang.resultScore(score, data.questions.length);
+            getElement('restart-button-text').textContent = lang.restartButton;
+            getElement('download-pdf-button-text').textContent = lang.downloadButton;
+        }
+
+        function toggleLanguage() {
+            const toggle = languageToggle.querySelector('span:last-child');
+            const lang = langMap[currentLanguage === 'id' ? 'en' : 'id'];
+            
+            if (currentLanguage === 'id') {
+                currentLanguage = 'en';
+                toggle.style.transform = 'translateX(0px)';
+                languageToggle.classList.remove('bg-blue-600');
+                languageToggle.classList.add('bg-gray-400');
+                getElement('lang-id-label').classList.add('text-gray-400');
+                getElement('lang-en-label').classList.remove('text-gray-400');
+
+            } else {
+                currentLanguage = 'id';
+                toggle.style.transform = 'translateX(20px)';
+                languageToggle.classList.add('bg-blue-600');
+                languageToggle.classList.remove('bg-gray-400');
+                getElement('lang-id-label').classList.remove('text-gray-400');
+                getElement('lang-en-label').classList.add('text-gray-400');
+            }
+            
+            // Update start page text if it's visible
+            if(startContainer.style.display !== 'none') {
+                getElement('start-title').textContent = lang.startTitle;
+                getElement('label-name').textContent = lang.labelName;
+                getElement('label-class').textContent = lang.labelClass;
+                getElement('label-email').textContent = lang.labelEmail;
+                getElement('start-quiz-button').textContent = lang.startButton;
+            } else if (quizContainer.style.display !== 'none') {
+                 renderQuestion();
+            }
+           
+        }
+        
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const content = getElement('pdf-content');
+            const detailedResultsEl = getElement('detailed-results');
+            const downloadBtn = getElement('download-pdf-button');
+            const originalBtnText = downloadBtn.innerHTML;
+
+            // Set button to loading state
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = currentLanguage === 'id' ? 'Memuat...' : 'Loading...';
+
+            // Temporarily change styling for full capture
+            const originalMaxHeight = detailedResultsEl.style.maxHeight;
+            const originalOverflowY = detailedResultsEl.style.overflowY;
+            detailedResultsEl.style.maxHeight = 'none';
+            detailedResultsEl.style.overflowY = 'visible';
+            // Add a small delay to ensure the DOM updates before capturing
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            try {
+                const canvas = await html2canvas(content, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    windowWidth: content.scrollWidth,
+                    windowHeight: content.scrollHeight
+                });
+                
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 210; // A4 width in mm
+                const pageHeight = 295; // A4 height in mm
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                
+                const doc = new jsPDF('p', 'mm');
+                let position = 0;
+
+                doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    doc.addPage();
+                    doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                // Add footer to the last page
+                const now = new Date();
+                const dateTimeString = now.toLocaleString('id-ID', {
+                    dateStyle: 'full',
+                    timeStyle: 'long',
+                    timeZone: 'Asia/Makassar'
+                });
+                
+                const footerText1 = `Dicetak pada : ${dateTimeString} WITA`;
+                const footerText2 = "Dikoreksi oleh Pak Ammank";
+
+                doc.setPage(doc.internal.getNumberOfPages()); // Go to the last page
+                doc.setFont('helvetica', 'bolditalic');
+                doc.setFontSize(10);
+                
+                // Position footer at the bottom of the last page
+                doc.text(footerText1, 10, pageHeight - 15);
+                doc.text(footerText2, 10, pageHeight - 10);
+
+                doc.save(`Hasil Kuis - ${studentInfo.name}.pdf`);
+            } catch (error) {
+                console.error("Gagal membuat PDF:", error);
+                alert(currentLanguage === 'id' ? 'Gagal membuat PDF. Silakan coba lagi.' : 'Failed to create PDF. Please try again.');
+            } finally {
+                // Restore original styling and button state
+                detailedResultsEl.style.maxHeight = originalMaxHeight;
+                detailedResultsEl.style.overflowY = originalOverflowY;
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = originalBtnText;
+            }
+        }
+
+
+        // Event Listeners
+        userInfoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            studentInfo.name = getElement('student-name').value;
+            studentInfo.class = getElement('student-class').value;
+            studentInfo.email = getElement('student-email').value;
+            
+            startContainer.classList.add('hidden');
+            quizContainer.classList.remove('hidden');
+            renderQuestion();
+        });
+        
+        nextButton.addEventListener('click', () => {
+            if (currentQuestionIndex < quizDataID.questions.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion();
+            }
+        });
+
+        prevButton.addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            }
+        });
+        
+        submitButton.addEventListener('click', showResults);
+        
+        languageToggle.addEventListener('click', toggleLanguage);
+        
+        getElement('restart-button').addEventListener('click', () => {
+            currentQuestionIndex = 0;
+            userAnswers.fill(null);
+            studentInfo = {};
+            
+            resultsContainer.classList.add('hidden');
+            startContainer.classList.remove('hidden');
+            userInfoForm.reset();
+        });
+
+        getElement('download-pdf-button').addEventListener('click', downloadPDF);
+
+        hintButton.addEventListener('click', () => {
+            const data = currentLanguage === 'id' ? quizDataID : quizDataEN;
+            const lang = langMap[currentLanguage];
+            getElement('hint-modal-title').textContent = lang.hintModalTitle;
+            getElement('hint-modal-text').textContent = data.questions[currentQuestionIndex].hint;
+            getElement('close-modal-button-text').textContent = lang.closeModalButton;
+            hintModal.style.display = 'flex';
+        });
+
+        getElement('close-modal-button').addEventListener('click', () => {
+            hintModal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', (event) => {
+            if (event.target == hintModal) {
+                hintModal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
+
